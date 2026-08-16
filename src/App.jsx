@@ -1,18 +1,45 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+// ... 기존 import 코드들 ...
+
+// 🚨 새로 추가할 코드 (창고 열쇠)
+import { createClient } from '@supabase/supabase-js';
+const supabaseUrl = 'https://pusjqsqkadloaqfuiqqn.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1c2pxc3FrYWRsb2FxZnVpcXFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4NTczMTUsImV4cCI6MjEwMjQzMzMxNX0.4RIa5voxz7cXkZ-yLmkfXnESipsfqjfsdheE1Z0hrHU';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 function App() {
   const [plan, setPlan] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 백엔드 서버(3000번 포트)로 데이터 요청
-    fetch('https://garmin-ai-coach-xxxx.onrender.com/api/daily-plan')
-      .then(res => res.json())
-      .then(data => {
-        setPlan(data);
+    async function fetchDailyPlan() {
+      try {
+        // Render 대신 Supabase 창고에서 가장 최근 데이터 1개만 쏙 빼오기
+        const { data: plans, error } = await supabase
+          .from('daily_plans')
+          .select('*')
+          .order('date', { ascending: false })
+          .limit(1);
+
+        if (error) throw error;
+
+        // 창고에 데이터가 있다면 화면에 세팅하기
+        if (plans && plans.length > 0) {
+          const todayData = plans[0];
+          setData({
+            garmin: todayData.garmin_data,
+            systemRule: todayData.system_rule,
+            aiCoach: todayData.ai_coach
+          });
+        }
+      } catch (err) {
+        console.error("데이터를 가져오는 중 오류 발생:", err);
+      } finally {
         setLoading(false);
-      })
-      .catch(err => console.error("데이터 로딩 실패:", err));
+      }
+    }
+
+    fetchDailyPlan();
   }, []);
 
   // 데이터를 기다리는 동안 보여줄 로딩 화면

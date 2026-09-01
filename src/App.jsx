@@ -1,15 +1,10 @@
 import React, { useState, useEffect } from 'react';
 
-// 🚨 핵심 수정: 하드코딩된 Supabase URL/키를 Vite 환경변수로 이동
+// 🚨 핵심 수정: Vercel env 주입 실패로 Supabase 접속정보를 하드코딩으로 복원 (anon key는 공개용, RLS 보호됨)
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-  console.error('VITE_SUPABASE_URL 또는 VITE_SUPABASE_KEY 환경변수가 .env에 설정되지 않았습니다.');
-}
-
+const supabaseUrl = 'https://vngeuobmbfhkgpuhdohi.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuZ2V1b2JtYmZoa2dwdWhkb2hpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5ODc4OTAsImV4cCI6MjEwMTU2Mzg5MH0.ULsvuT1Xnb6tGZl1zuglxkhdDyCOy7arrng9ZW_rppo';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 function App() {

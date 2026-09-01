@@ -1,9 +1,15 @@
 import React, { useState, useEffect } from 'react';
 
-// 🚨 Supabase 창고 열쇠 세팅
+// 🚨 핵심 수정: 하드코딩된 Supabase URL/키를 Vite 환경변수로 이동
 import { createClient } from '@supabase/supabase-js';
-const supabaseUrl = 'https://pusjqsqkadloaqfuiqqn.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1c2pxc3FrYWRsb2FxZnVpcXFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4NTczMTUsImV4cCI6MjEwMjQzMzMxNX0.4RIa5voxz7cXkZ-yLmkfXnESipsfqjfsdheE1Z0hrHU';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error('VITE_SUPABASE_URL 또는 VITE_SUPABASE_KEY 환경변수가 .env에 설정되지 않았습니다.');
+}
+
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 function App() {
@@ -52,11 +58,11 @@ function App() {
     );
   }
 
-  // 🚨 2단계 방패 (추가됨): 로딩은 끝났는데 창고가 비어있을 때 (에러 방지)
+  // 🚨 2단계 방패 (수정됨): 로딩은 끝났는데 창고가 비어있을 때 — GitHub Actions 자동 업데이트 안내
   if (!plan) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-900 text-white font-sans">
-        <p className="text-lg">아직 오늘 등록된 AI 코칭 데이터가 없습니다.<br/>노트북에서 데이터를 먼저 보내주세요!</p>
+        <p className="text-lg">아직 오늘의 데이터가 준비되지 않았습니다.<br/>매일 아침 7시에 자동 업데이트됩니다.</p>
       </div>
     );
   }

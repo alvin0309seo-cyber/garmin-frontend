@@ -37,6 +37,27 @@ const OCR_PROMPT = `너는 인바디(InBody) 체성분 분석 결과지를 읽�
   "rawText": "이미지에서 읽은 모든 텍스트를 그대로 (디버깅용)"
 }`;
 
+// 🚨 핵심: Gemini API 일시적 과부하(503/429) 대응 — 지수 backoff 재시도.
+// 최대 3회 재시도(총 4회 시도), backoff 2초→4초→8초(합 14초 추가).
+// 503/429 계열만 재시도하고, 그 외 오류(400, 잘못된 키 등)는 즉시 throw.
+async function generateWithRetry(model: any, parts: any[], maxRetries = 3) {
+    let lastErr: any;
+    for (let i = 0; i <= maxRetries; i++) {
+        try {
+            return await model.generateContent(parts);
+        } catch (e: any) {
+            lastErr = e;
+            const msg = (e?.message || "") + (e?.status || "");
+            const retryable = /503|429|Service Unavailable|high demand|RESOURCE_EXHAUSTED/i.test(msg);
+            if (!retryable || i === maxRetries) throw e;
+            const wait = 2000 * Math.pow(2, i);
+            console.log(`⚠️ Gemini 과부하(503/429), ${wait / 1000}초 후 재시도 ${i + 1}/${maxRetries}...`);
+            await new Promise((r) => setTimeout(r, wait));
+        }
+    }
+    throw lastErr;
+}
+
 serve(async (req) => {
     if (req.method !== "POST") {
         return new Response(JSON.stringify({ error: "POST only" }), { status: 405 });
@@ -53,7 +74,7 @@ serve(async (req) => {
             model: "gemini-3.6-flash",
             generationConfig: { responseMimeType: "application/json" },
         });
-        const result = await model.generateContent([
+        const result = await generateWithRetry(model, [
             { text: OCR_PROMPT },
             { inlineData: { mimeType, data: imageBase64 } },
         ]);

@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import InbodyUpload from './components/InbodyUpload';
 
 // 🚨 핵심 수정: Vercel env 주입 실패로 Supabase 접속정보를 하드코딩으로 복원 (anon key는 공개용, RLS 보호됨)
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = 'https://vngeuobmbfhkgpuhdohi.supabase.co';
-const supabaseKey = 'eyJhbG...rppo';
-const supabase = createClient(supabaseUrl, supabaseKey);
+// → 접속정보는 src/supabase.js 로 중앙화 (App.jsx 는 import 만 사용)
+import { supabase } from './supabase';
 
 // 지표 카드 하나 (값이 없으면 '—' 폴백 표시)
 function StatCard({ label, value, suffix, color }) {
@@ -113,6 +111,9 @@ function App() {
             />
           ))}
         </section>
+
+        {/* 인바디 체성분 업로드/표시 */}
+        <InbodyUpload />
 
         {/* 추천 루틴 리스트 */}
         <section className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">

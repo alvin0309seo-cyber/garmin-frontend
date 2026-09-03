@@ -4,8 +4,24 @@ import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = 'https://vngeuobmbfhkgpuhdohi.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuZ2V1b2JtYmZoa2dwdWhkb2hpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5ODc4OTAsImV4cCI6MjEwMTU2Mzg5MH0.ULsvuT1Xnb6tGZl1zuglxkhdDyCOy7arrng9ZW_rppo';
+const supabaseKey = 'eyJhbG...rppo';
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+// 지표 카드 하나 (값이 없으면 '—' 폴백 표시)
+function StatCard({ label, value, suffix, color }) {
+  const display =
+    value == null
+      ? '—'
+      : typeof value === 'number' && label === '걸음수'
+        ? value.toLocaleString() + (suffix || '')
+        : value + (suffix || '');
+  return (
+    <div className="bg-gray-800 p-4 rounded-xl text-center shadow-lg border border-gray-700">
+      <p className="text-xs text-gray-400 mb-1">{label}</p>
+      <p className={`text-2xl font-bold ${color}`}>{display}</p>
+    </div>
+  );
+}
 
 function App() {
   const [plan, setPlan] = useState(null);
@@ -26,7 +42,7 @@ function App() {
         // 창고에 데이터가 있다면 화면에 세팅하기
         if (plans && plans.length > 0) {
           const todayData = plans[0];
-          
+
           // 🚨 수정됨: setData가 아니라 setPlan으로 맞춤!
           setPlan({
             garmin: todayData.garmin_data,
@@ -65,30 +81,37 @@ function App() {
   // 데이터가 성공적으로 도착하면 변수에 담아줍니다
   const { garmin, aiCoach } = plan;
 
+  // 🚨 핵심 지표 카드 목록 (신규 필드, null/옛 행은 '—' 폴백)
+  const metrics = [
+    { label: '수면 점수', value: garmin?.sleepScore, suffix: '', color: 'text-indigo-400' },
+    { label: '안정 심박수', value: garmin?.restingHeartRate, suffix: 'bpm', color: 'text-rose-400' },
+    { label: 'HRV', value: garmin?.avgOvernightHrv, suffix: 'ms', color: 'text-emerald-400' },
+    { label: '스트레스', value: garmin?.stressLevel, suffix: '', color: 'text-amber-400' },
+    { label: '걸음수', value: garmin?.steps, suffix: '', color: 'text-sky-400' },
+    { label: '체중', value: garmin?.weightKg, suffix: 'kg', color: 'text-purple-400' }
+  ];
+
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 p-4 md:p-8 font-sans">
       <div className="max-w-md mx-auto space-y-6">
-        
+
         {/* 상단 인사말 및 코멘트 */}
         <header className="mb-8 pt-4">
           <h1 className="text-3xl font-bold text-white mb-2">오늘의 AI 트레이닝</h1>
           <p className="text-gray-400">{aiCoach?.greeting}</p>
         </header>
 
-        {/* 가민 핵심 데이터 요약 */}
+        {/* 가민 핵심 데이터 요약 (확장: 수면/심박/HRV/스트레스/걸음/체중) */}
         <section className="grid grid-cols-3 gap-4 mb-8">
-          <div className="bg-gray-800 p-4 rounded-xl text-center shadow-lg border border-gray-700">
-            <p className="text-xs text-gray-400 mb-1">바디 배터리</p>
-            <p className="text-2xl font-bold text-blue-400">{garmin?.bodyBattery}</p>
-          </div>
-          <div className="bg-gray-800 p-4 rounded-xl text-center shadow-lg border border-gray-700">
-            <p className="text-xs text-gray-400 mb-1">수면 점수</p>
-            <p className="text-2xl font-bold text-indigo-400">{garmin?.sleepScore}</p>
-          </div>
-          <div className="bg-gray-800 p-4 rounded-xl text-center shadow-lg border border-gray-700">
-            <p className="text-xs text-gray-400 mb-1">안정 심박수</p>
-            <p className="text-2xl font-bold text-rose-400">{garmin?.restingHeartRate}</p>
-          </div>
+          {metrics.map((m) => (
+            <StatCard
+              key={m.label}
+              label={m.label}
+              value={m.value}
+              suffix={m.suffix}
+              color={m.color}
+            />
+          ))}
         </section>
 
         {/* 추천 루틴 리스트 */}

@@ -50,6 +50,45 @@ function fileToBase64(file) {
   });
 }
 
+// 파일 → HTMLImageElement 로드 (Canvas 리사이즈용)
+function loadImage(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('이미지를 로드하지 못했습니다.'));
+    };
+    img.src = url;
+  });
+}
+
+// 🚨 핵심 수정: OCR 전 클라이언트 이미지 압축 (Edge Function 150초 타임아웃 회피)
+// 큰 원본 이미지 → 최대 변 1200px JPEG(quality 0.85)로 축소해 Gemini 처리 시간 단축.
+// PDF는 압축 생략(원본 전송), 원본 대비 줄지 않으면 원본 사용(안전장치).
+async function compressImage(file, maxDim = 1200, quality = 0.85) {
+  if (file.type === 'application/pdf') return file; // PDF는 압축 안 함
+  if (!file.type.startsWith('image/')) return file;
+
+  const img = await loadImage(file);
+  const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+  if (scale >= 1) return file; // 이미 작으면 원본
+
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(img.width * scale);
+  canvas.height = Math.round(img.height * scale);
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+  if (!blob || blob.size >= file.size) return file; // 줄지 않았으면 원본
+  return new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
+}
+
 function randomId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -96,7 +135,9 @@ export default function InbodyUpload() {
     setSuccessMsg(null);
     setLoading(true);
     try {
-      const imageBase64 = await fileToBase64(file);
+      // 🚨 OCR에는 압축본 전달 (Storage엔 원본 유지)
+      const compressed = await compressImage(file);
+      const imageBase64 = await fileToBase64(compressed);
 
       // 1) Edge Function 호출 (Gemini OCR)
       const res = await fetch(EDGE_URL, {
@@ -105,7 +146,7 @@ export default function InbodyUpload() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         },
-        body: JSON.stringify({ imageBase64, mimeType: file.type }),
+        body: JSON.stringify({ imageBase64, mimeType: compressed.type }),
       });
       const json = await res.json();
       if (!res.ok || !json.success) {
